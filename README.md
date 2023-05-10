@@ -30,3 +30,4 @@ As a group of four, our approach involved designing an Entity Relationship Diagr
 
 <h2> 5. Key Findings and Design Methods: 
 
+- [Our solution](https://github.com/annanana164/GoGet-DataWarehouse/blob/main/Key%20Findings.md)
