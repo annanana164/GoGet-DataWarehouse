@@ -322,5 +322,160 @@ ALTER TABLE inquiry
 ALTER TABLE inquiry
     ADD CONSTRAINT inquiry_plans_fk FOREIGN KEY ( planid )
         REFERENCES plans ( planid );
+        
+        
+ -- Create temporaryrevenue table  
+        CREATE TABLE temporaryrevenue AS ( 
+SELECT distinct (b.bookingenddate - b.bookingstartdate)*p.vandayrate*(1-d.discountpercentage/100) - t.tollcost AS "Revenues", b.bookingid
+FROM plans p
+JOIN "Booking Details" b USING (planid)
+JOIN model m USING (modelid)
+JOIN "Vehicle Details" v USING (modelid)
+JOIN discount d USING (discountid)
+JOIN toll t USING (tollid));
+
+        
+  -- Create Galaxy Schema and Data Warehouse     
+  
+DROP TABLE DWREVENUE_FACT;
+
+DROP TABLE DWBOOKINGTIME_FACT;
+
+DROP TABLE DWPAYMENT_DIMENSION;
+
+DROP TABLE DWCUSTOMER_DIMENSION;
+DROP TABLE DWCALENDAR_DIMENSION;
+
+DROP TABLE DWBOOKING_DETAILS_DIMENSION;
+
+
+CREATE TABLE DWCUSTOMER_DIMENSION (
+
+customerid                NUMBER(3,0) NOT NULL,
+firstname  	            VARCHAR2(50),
+lastname 	                VARCHAR2(50),
+licensedetails 	        VARCHAR2(50),
+membershipno		        NUMBER(2,0),
+membershipstartdate       DATE,
+currentmembershipflag 	VARCHAR2(50 BYTE),
+
+    CONSTRAINT DWCUSTOMER_DIMENSION PRIMARY KEY(customerid)
+);
+
+
+INSERT INTO DWCUSTOMER_DIMENSION
+SELECT   customerid, firstname, lastname, driverlicensedetails, membershipid, membershipstartdate, currentmembershipflag
+FROM  customer 
+JOIN membership USING (customerid);
+
+
+CREATE TABLE DWBOOKING_DETAILS_DIMENSION (
+
+bookingid                NUMBER(3,0) NOT NULL,
+bookingtype	            VARCHAR2(50),
+planid	                NUMBER(1,0),
+plantype	                VARCHAR2(50),
+paymentid		            NUMBER(4,0),
+paymentplan                VARCHAR2(50),
+
+
+    CONSTRAINT DWBOOKING_DETAILS_DIMENSION PRIMARY KEY(bookingid)
+);
+
+
+INSERT INTO DWBOOKING_DETAILS_DIMENSION
+SELECT   bookingid, bookingtype, planid, plantype, paymentid, paymentplan
+
+FROM  Booking_Details 
+JOIN plans  USING (planid)
+JOIN payment  USING (bookingid);
+
+
+CREATE TABLE DWPAYMENT_DIMENSION(
+paymentid                 NUMBER(4,0) NOT NULL,
+paymentstatus              VARCHAR2(50),
+cardnumber                 INTEGER,
+discountid              NUMBER(4,0),
+discountpercentage         INTEGER,
+tollid                    NUMBER(4,0),
+tolltype                   VARCHAR2(50),
+
+    CONSTRAINT DWPAYMENT_DIMENSION PRIMARY KEY(paymentid)
+);
+
+
+INSERT INTO DWPAYMENT_DIMENSION
+SELECT   paymentid, paymentstatus, cardnumber,
+        discountid, discountpercentage, tollid, tolltype
+        
+        
+FROM  Booking_Details
+JOIN plans USING (planid)
+JOIN discount USING (discountid)
+JOIN toll USING (tollid)
+JOIN payment USING (bookingid)
+JOIN Card_Details USING (cardnumber);
+
+
+CREATE TABLE DWCALENDAR_DIMENSION(
+calendarid         INTEGER,
+calendardate       DATE,
+calendaryear      INTEGER,
+calendarmonth      INTEGER,
+calendarday        VARCHAR2(50),
+
+
+CONSTRAINT DWCALENDAR_DIMENSION PRIMARY KEY(calendarid));
+
+
+INSERT INTO DWCALENDAR_DIMENSION
+SELECT calendarid, calendardate, year, month, day 
+FROM calendar; 
+
+
+CREATE TABLE DWREVENUE_FACT(
+calendarid         	INTEGER NOT NULL,
+customerid     	NUMBER(3,0) NOT NULL,
+paymentid        	 NUMBER(4,0)NOT NULL,
+revenueamount      INTEGER, 
+
+
+    CONSTRAINT DWREVENUE_FACT_pk PRIMARY KEY (calendarid, customerid, paymentid),
+    CONSTRAINT DWCALENDAR_DIMENSION_fk FOREIGN KEY (CALENDARID) REFERENCES DWCALENDAR_DIMENSION (CALENDARID),
+    CONSTRAINT DWREVCUSTOMER_DIMENSION_fk  FOREIGN KEY (customerid) REFERENCES DWCUSTOMER_DIMENSION(customerid),
+    CONSTRAINT DWREVPAYMENT_DIMENSION_fk FOREIGN KEY (paymentid) REFERENCES DWPAYMENT_DIMENSION (paymentid)
+);
+
+
+CREATE TABLE DWBOOKINGTIME_FACT(
+calendarid        INTEGER NOT NULL,
+customerid           NUMBER(3,0) NOT NULL,
+bookingid            NUMBER(3,0) NOT NULL,
+bookingtime            INTEGER, 
+
+
+    CONSTRAINT DWBOOKING_FACT_pk PRIMARY KEY (calendarid, customerid , bookingid),
+    CONSTRAINT DWBTCALENDAR_DIMENSION_fk FOREIGN KEY (calendarid) REFERENCES DWCALENDAR_DIMENSION (CALENDARID),
+    CONSTRAINT DWBTCUSTOMER_DIMENSION_fk FOREIGN KEY (customerid) REFERENCES DWCUSTOMER_DIMENSION(customerid),
+    CONSTRAINT DWBTBOOKING_DETAILS_DIMENSION_fk FOREIGN KEY (bookingid) REFERENCES  DWBOOKING_DETAILS_DIMENSION (bookingid)
+
+);
+
+
+INSERT INTO DWREVENUE_FACT
+SELECT calendarid, customerid, paymentid, revenueamount 
+FROM payment
+JOIN revenue USING (revenueid)
+JOIN Card_Details USING (cardnumber)
+JOIN customer USING (cardnumber)
+JOIN Booking_Details USING (customerid)
+JOIN calendar USING (calendarid); 
+
+
+INSERT INTO DWBOOKINGTIME_FACT 
+SELECT calendarid, customerid, bookingid, bookingtime
+FROM calendar
+JOIN Booking_Details USING (calendarid);
+
 
 
