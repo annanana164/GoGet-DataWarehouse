@@ -1,4 +1,4 @@
-# GoGet-DataWarehouse
+# 🚗GoGet-DataWarehouse🚗
 Providing data-driven decisions to improve current car-sharing services from GoGet, through database design and data warehouse creation. This was conducted under INFS2608 Database Management & Big Data Infrastructures, course offered by the University of New South Wales.
 
 <h2>1. Project Overview</h2> 
