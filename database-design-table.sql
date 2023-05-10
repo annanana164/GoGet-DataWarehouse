@@ -478,4 +478,51 @@ FROM calendar
 JOIN Booking_Details USING (calendarid);
 
 
+---- MATERIALIZED VIEW --- 
+DROP MATERIALIZED VIEW dw_revenue_mv;
+
+
+CREATE MATERIALIZED VIEW dw_revenue_mv
+BUILD IMMEDIATE 
+REFRESH 
+COMPLETE
+ENABLE QUERY REWRITE 
+AS SELECT DISTINCT 
+        customerid,
+        c.firstname, 
+        c.lastname, 
+        c.currentmembershipflag, 
+        r.revenueamount, 
+        cl.calendardate, 
+        cl.calendaryear,
+        cl.calendarmonth,
+        cl.calendarday
+    FROM DWCUSTOMER_DIMENSION c 
+    JOIN DWREVENUE_FACT r USING (customerid)
+    JOIN DWCALENDAR_DIMENSION cl USING (calendarid);
+
+SELECT * FROM DW_REVENUE_MV; 
+
+
+DROP MATERIALIZED VIEW dw_booking_mv;
+
+
+CREATE MATERIALIZED VIEW dw_booking_mv
+BUILD IMMEDIATE 
+REFRESH 
+COMPLETE
+ENABLE QUERY REWRITE 
+AS SELECT DISTINCT 
+       b.bookingtime,
+       bd.bookingtype, 
+        cl.calendardate, 
+        cl.calendaryear,
+        cl.calendarmonth,
+        cl.calendarday
+    FROM DWBOOKINGTIME_FACT b
+    JOIN DWBOOKING_DETAILS_DIMENSION  bd USING (bookingid)
+   JOIN DWCALENDAR_DIMENSION cl USING (calendarid);
+
+SELECT * FROM dw_booking_mv;
+
 
